@@ -12,11 +12,14 @@ enum MessageTypes
 	MT_GET_DATA = 3,
 	MT_SEND_DATA = 4,
 	MT_NO_DATA = 5,
-	MT_CONFIRM = 6
+	MT_RECEIVE_DATA = 6,
+	MT_CONFIRM = 7,
+	MT_USER_NOT_FOUND = 8
 };
 
 enum MessageRecipients
 {
+	MR_NO_UID = -1,
 	MR_BROKER = 10,
 	MR_ALL = 50,
 	MR_USER = 100

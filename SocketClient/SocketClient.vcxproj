@@ -157,6 +157,7 @@
     <ClInclude Include="Resource.h" />
     <ClInclude Include="SockOperations.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="Utils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Message.cpp" />
@@ -168,6 +169,7 @@
     </ClCompile>
     <ClCompile Include="SocketClient.cpp" />
     <ClCompile Include="SockOperations.cpp" />
+    <ClCompile Include="Utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="SocketClient.rc" />
