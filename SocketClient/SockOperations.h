@@ -5,8 +5,8 @@
 class SockOperations
 {
 public:
-	static Message Receive(CSocket& s);
-	static bool Send(CSocket& s, Message msg);
+	static Message Receive(SOCKET& s);
+	static bool Send(SOCKET& s, Message msg);
 };
 
 #endif

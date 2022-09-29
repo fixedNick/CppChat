@@ -160,6 +160,7 @@
     <ClInclude Include="SocketServer.h" />
     <ClInclude Include="SockOperations.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="Utils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Client.cpp" />
@@ -173,6 +174,7 @@
     <ClCompile Include="QueueUnit.cpp" />
     <ClCompile Include="SocketServer.cpp" />
     <ClCompile Include="SockOperations.cpp" />
+    <ClCompile Include="Utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="SocketServer.rc" />

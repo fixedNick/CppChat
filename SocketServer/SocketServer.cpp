@@ -1,102 +1,68 @@
-#ifdef _DEBUG
-#define new DEBUG_NEW
-#endif
-
 #include "pch.h"
 #include "framework.h"
 #include "SocketServer.h"
 #include "Message.h"
 #include "SockOperations.h"
 #include "QueueUnit.h"
+#include "Client.h"
 #include <vector>
 
-int actualUserID = 100;
-
-map<int, SOCKET> clients;
-map<int, queue<QueueUnit>> QueuesCollection;
-
-void AddMessageToQueue(int clientID, QueueUnit unit)
-{
-	QueuesCollection[clientID].push(unit);
-}
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#endif
 
 void ProcessClient(SOCKET hSock)
 {
-	CSocket clientSock;
-	int clientID;
-	clientSock.Attach(hSock);
+	Client* client = nullptr;
 
 	while (true)
 	{
-		Message msg = SockOperations::Receive(clientSock);
-		bool isUserOnline;
-		cout << "Received message from user: " << msg.MsgHeader.From << ", type: " << (MessageTypes)msg.MsgHeader.Type << "\n";
+		Message msg = SockOperations::Receive(hSock);
+		cout << "Received message from user: " << msg.MsgHeader.From << ", type: " << msg.MsgHeader.Type << "\n";
 		switch (msg.MsgHeader.Type)
 		{
+		case MT_GET_ONLINE:
+			// TODO
+			break;
 		case MT_SEND_DATA:
-			cout << "User " << msg.MsgHeader.From << ", Sending data: " << msg.data << ", to user: " << msg.MsgHeader.To << "\n";
-
-			isUserOnline = false;
-
-			for (auto& client : clients)
 			{
-				if (client.first == msg.MsgHeader.To)
+				cout << "User " << msg.MsgHeader.From << ", Sending data: " << msg.data << ", to user: " << msg.MsgHeader.To << "\n";
+				bool isClientOnline;
+				Client* recipient = Client::GetClient(msg.MsgHeader.To, isClientOnline);
+
+				if (isClientOnline == false)
+				{	
+					Message m(msg.MsgHeader.From, MR_BROKER, MT_USER_NOT_FOUND, "");
+					client->AddMessageToQueue(m);
+				}
+				else 
 				{
-					isUserOnline = true;
+					Message msgToSend(msg.MsgHeader.To, msg.MsgHeader.From, MT_RECEIVE_DATA, msg.data);
 
-					msg.MsgHeader.Type = MT_RECEIVE_DATA;
-					Message successMsg(clientID, MR_BROKER, MT_RECEIVE_DATA, "Your message successfully sent");
+					int clientId = client->ID;
+					Message successMsg(clientId, MR_BROKER, MT_RECEIVE_DATA, "Your message successfully sent");
 
-					QueueUnit qSend(msg, client.second);
-					AddMessageToQueue(client.first, qSend);
-
-					QueueUnit qResp(successMsg, clients[clientID]);
-					AddMessageToQueue(clientID, qResp);
-					
-					SockOperations::Send(clientSock, successMsg);
+					client->AddMessageToQueue(successMsg);
+					recipient->AddMessageToQueue(msgToSend);
 				}
 			}
-
-			if (isUserOnline == false) {
-				Message m(msg.MsgHeader.From, MR_BROKER, MT_USER_NOT_FOUND, "");
-				QueueUnit qUnit(m, clientSock);
-				AddMessageToQueue(clientID, qUnit);
-			}
 			break;
-		case MT_CONFIRM:
-			clientSock.Close();
+		case MT_EXIT:
+			client->StopClient();
 			return;
 		case MT_GET_DATA:
-			if (QueuesCollection[clientID].empty() == true)
+			if(client->SendMsg() == false)
 			{
-				Message emptyMessage(clientID, MR_BROKER, MT_NO_DATA, "");
-				SockOperations::Send(clientSock, emptyMessage);
-				break;
+				Message emptyMessage(client->ID, MR_BROKER, MT_NO_DATA, "");
+				SockOperations::Send(client->ClientSocketHandle, emptyMessage);
 			}
-
-			{
-				clientSock.Detach();
-				CSocket recipient;
-				QueueUnit msgToSend = QueuesCollection[clientID].front();
-				recipient.Attach(msgToSend.hSockTo);
-				SockOperations::Send(recipient, msgToSend.Msg);
-				recipient.Detach();
-				clientSock.Attach(hSock);
-
-				QueuesCollection[clientID].pop();
-			}
-
 			break;
 		case MT_INIT:
-			clientID = ++actualUserID;
-			cout << "Registration for new user. Given ID: [" << clientID << "], user name: [" << msg.data << "]" << "\n";
+			client = Client::Create(msg.data, hSock);
+			cout << "Registration for new user. Given ID: [" << client->ID << "], user name: [" << msg.data << "]" << "\n";
 			
-			string sUserID = to_string(actualUserID);
-
-			Message response(actualUserID, MR_BROKER, MT_CONFIRM, sUserID);
-			response.MsgHeader.Size = strlen(sUserID.c_str());
-			SockOperations::Send(clientSock, response);
-			clients[actualUserID] = hSock;
+			Message response(client->ID, MR_BROKER, MT_CONFIRM, to_string(client->ID));
+			SockOperations::Send(client->ClientSocketHandle, response);
 			break;
 		}
 		

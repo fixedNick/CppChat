@@ -14,7 +14,8 @@ enum MessageTypes
 	MT_NO_DATA = 5,
 	MT_RECEIVE_DATA = 6,
 	MT_CONFIRM = 7,
-	MT_USER_NOT_FOUND = 8
+	MT_USER_NOT_FOUND = 8,
+	MT_GET_ONLINE = 9
 };
 
 enum MessageRecipients

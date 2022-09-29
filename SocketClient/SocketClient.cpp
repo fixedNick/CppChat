@@ -1,7 +1,3 @@
-#ifdef _DEBUG
-#define new DEBUG_NEW
-#endif
-
 #include "pch.h"
 #include "framework.h"
 #include <afxsock.h>
@@ -9,8 +5,12 @@
 #include <thread>
 #include <string>
 #include "Utils.h"
-#include "../SocketServer/SockOperations.h"
-#include "../SocketServer/Message.h"
+#include "SockOperations.h"
+#include "Message.h"
+
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#endif
 
 using namespace std;
 
@@ -20,35 +20,33 @@ SOCKET sock;
 
 Message SendMsg(Message msg, bool isReceive = false)
 {
-	CSocket s;
 	if (!sock) {
+		CSocket s;
 		s.Create();
-		if (!s.Connect("127.0.0.1", 12345))
+		if (s.Connect("127.0.0.1", 12345) == false)
 			throw runtime_error("Connection to server failed");
+		else sock = s.Detach();
 	}
-	else s.Attach(sock);
 
-	SockOperations::Send(s, msg);
+	SockOperations::Send(sock, msg);
 
-	if (isReceive) {
-		Message resp = SockOperations::Receive(s);
-		sock = s.Detach();
-		return resp;
+	if (isReceive)
+	{
+		auto msg = SockOperations::Receive(sock);
+		return msg;
 	}
 	else
-	{
-		sock = s.Detach();
 		return Message();
-	}
 }
 
 void CheckForNewMessages()
 {
 	while (true)
 	{
-		Sleep(7000);
+		Sleep(8000);
 		Message msg(MR_BROKER, ClientID, MT_GET_DATA, "");
 		auto response = SendMsg(msg, true);
+
 		switch (response.MsgHeader.Type)
 		{
 		case MT_NO_DATA:
@@ -97,8 +95,16 @@ void Client()
 
 		if (cmd.rfind("/", 0) != std::string::npos)
 		{
-			cout << "1.To send message enter [clientID:message]\n";
-			cout << "2.To get list of users online: /online\n";
+			if (strcmp(cmd.c_str(), "/help") == 0) 
+			{
+				cout << "1.To send message enter [clientID:message]\n";
+				cout << "2.To get list of users online: /online\n";
+			}
+			else if (strcmp(cmd.c_str(), "/online") == 0)
+			{
+				Message getOnlineMsg(MR_BROKER, ClientID, MT_GET_ONLINE, "");
+				SendMsg(getOnlineMsg, false);
+			}
 			continue;
 		}
 		else if (cmd.find(":") != std::string::npos)
