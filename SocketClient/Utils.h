@@ -16,6 +16,7 @@ public:
 	/// [1] userID
 	/// [2] message
 	static vector<string> SplitCommand(string cmd, string delimiter);
+	static vector<string> Split(string baseString, string delimiter);
 	static long long GetCurrentTimeSec();
 };
 

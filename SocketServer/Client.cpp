@@ -29,22 +29,26 @@ Client* Client::GetClient(int clientID, bool& isClientOnline)
 	return new Client();
 }
 
+bool Client::IsClientInList(int clientId)
+{
+	for (auto c : Clients)
+	{
+		if (c->ID == clientId)
+			return true;
+	}
+	return false;
+}
+
 void Client::AddMessageToQueue(Message msg)
 {
 	QueueUnit qUnit(msg, ClientSocketHandle);
 	MessagesQueue.push(qUnit);
 }
 
-void Client::StopClient()
+void Client::StopClient(Message messageToClient)
 {
-	for (int i = 0; i < Clients.size(); i++)
-	{
-		if (Clients[i]->ID == ID)
-		{
-			Clients.erase(Clients.begin() + i);
-			return;
-		}
-	}
+	AddMessageToQueue(messageToClient);
+	isDisconnectActivated = true;
 }
 
 bool Client::SendMsg()

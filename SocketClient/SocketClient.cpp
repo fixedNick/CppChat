@@ -17,6 +17,7 @@ using namespace std;
 static int ClientID = 0;
 
 SOCKET sock;
+bool isClientDisconnected = false;
 
 Message SendMsg(Message msg, bool isReceive = false)
 {
@@ -39,16 +40,25 @@ Message SendMsg(Message msg, bool isReceive = false)
 		return Message();
 }
 
+
 void CheckForNewMessages()
 {
 	while (true)
 	{
-		Sleep(8000);
+		Sleep(2333);
 		Message msg(MR_BROKER, ClientID, MT_GET_DATA, "");
 		auto response = SendMsg(msg, true);
 
 		switch (response.MsgHeader.Type)
 		{
+		case MT_DISCONNECT:
+			{
+				cout << "Send disconnect confirm\n";
+				isClientDisconnected = true;
+				Message confMessage(MR_BROKER, ClientID, MT_CONFIRM_DISCONNECT, "");
+				SendMsg(confMessage);
+				return;
+			}
 		case MT_NO_DATA:
 			break;
 		case MT_USER_NOT_FOUND:
@@ -57,6 +67,17 @@ void CheckForNewMessages()
 		case MT_RECEIVE_DATA:
 			cout << "You got new messages!\n";
 			cout << "[" << (response.MsgHeader.From == MR_BROKER ? "SERVER" : to_string(response.MsgHeader.From)) << "]: " << response.data << "\n";
+			break;
+		case MT_GET_ONLINE:
+			{
+				vector<string> usersOnline = Utils::Split(response.data, ":");
+				cout << "Users online:\n";
+				for (string& user : usersOnline)
+				{
+					vector<string> userInfo = Utils::Split(user, "/");
+					cout << "[" << userInfo[0] << "] " << userInfo[1] << "\n";
+				}
+			}
 			break;
 		default:
 			break;
@@ -93,25 +114,51 @@ void Client()
 		cout << "Enter command: ";
 		getline(cin, cmd);
 
+		if (isClientDisconnected)
+		{
+			cout << "You've been disconnected from the server..\nPress enter to close your client!";
+			getline(cin,cmd);
+			Sleep(2000);
+			CSocket s;
+			s.Attach(sock);
+			s.Close();
+			return;
+		}
+
 		if (cmd.rfind("/", 0) != std::string::npos)
 		{
 			if (strcmp(cmd.c_str(), "/help") == 0) 
 			{
 				cout << "1.To send message enter [clientID:message]\n";
-				cout << "2.To get list of users online: /online\n";
+				cout << "1.To send message for everyone [all:message]\n";
+				cout << "3.To get list of users online: /online\n";
+				cout << "4.To exit from chat: /exit\n";
 			}
 			else if (strcmp(cmd.c_str(), "/online") == 0)
 			{
 				Message getOnlineMsg(MR_BROKER, ClientID, MT_GET_ONLINE, "");
-				SendMsg(getOnlineMsg, false);
+				SendMsg(getOnlineMsg);
+			}
+			else if (strcmp(cmd.c_str(), "/exit") == 0)
+			{
+				Message getOnlineMsg(MR_BROKER, ClientID, MT_EXIT, "");
+				SendMsg(getOnlineMsg);
+				break;
 			}
 			continue;
 		}
 		else if (cmd.find(":") != std::string::npos)
 		{
 			vector<string> cmdParts = Utils::SplitCommand(cmd, ":");
-			Message msg(atoi(cmdParts.at(0).c_str()), ClientID, MT_SEND_DATA, cmdParts.at(1));
-			SendMsg(msg, false);
+
+			Message msg;
+			if (cmdParts[0] == "all")
+				msg = Message(MR_ALL, ClientID, MT_SEND_DATA, cmdParts.at(1));
+			else
+				msg = Message(atoi(cmdParts.at(0).c_str()), ClientID, MT_SEND_DATA, cmdParts.at(1));
+
+			cout << "Message to everyone successfully send!\n";
+			SendMsg(msg);
 		}
 		else cout << "Unknown command\n";
 	}
